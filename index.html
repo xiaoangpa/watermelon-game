@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>🍉 合成大西瓜 · 自定义图片版</title>
-    <meta name="description" content="超解压的合成大西瓜游戏，支持自定义水果图片">
+    <title>🍉 合成大西瓜 · 高清版</title>
+    <meta name="description" content="超解压的合成大西瓜游戏，高清水果图片">
     <style>
         * {
             box-sizing: border-box;
@@ -100,6 +100,9 @@
             box-shadow: inset 0 0 0 3px #dbbd8c, inset 0 6px 8px rgba(50,30,10,0.1);
             touch-action: none;
             cursor: grab;
+            /* 关键：保持像素清晰 */
+            image-rendering: crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
         }
         
         #gameCanvas:active {
@@ -175,7 +178,6 @@
             z-index: 20;
         }
         
-        /* 图片加载提示 */
         .image-status {
             position: fixed;
             bottom: 10px;
@@ -187,6 +189,7 @@
             font-size: 12px;
             pointer-events: none;
             opacity: 0.7;
+            z-index: 100;
         }
         
         @media (max-width: 400px) {
@@ -238,121 +241,96 @@
     (function(){
         "use strict";
 
+        // ==================== 高清画质配置 ====================
+        // 获取设备像素比，最高限制为2（防止性能问题）
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        
+        // 逻辑尺寸
+        const LOGIC_WIDTH = 400;
+        const LOGIC_HEIGHT = 700;
+        
+        // 物理像素尺寸
+        const PHYSICAL_WIDTH = LOGIC_WIDTH * dpr;
+        const PHYSICAL_HEIGHT = LOGIC_HEIGHT * dpr;
+        
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', {
+            alpha: true,
+            antialias: true,
+            willReadFrequently: false
+        });
+        
+        // 设置画布物理像素尺寸
+        canvas.width = PHYSICAL_WIDTH;
+        canvas.height = PHYSICAL_HEIGHT;
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        
+        // 缩放画布上下文，使绘图坐标保持逻辑尺寸
+        ctx.scale(dpr, dpr);
+        
+        // 启用高质量图片渲染
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        const nextCanvas = document.getElementById('nextFruitCanvas');
+        const nextCtx = nextCanvas.getContext('2d', { alpha: true, antialias: true });
+        nextCanvas.width = 80 * dpr;
+        nextCanvas.height = 80 * dpr;
+        nextCanvas.style.width = '36px';
+        nextCanvas.style.height = '36px';
+        nextCtx.scale(dpr, dpr);
+        nextCtx.imageSmoothingEnabled = true;
+        nextCtx.imageSmoothingQuality = 'high';
+
         // ==================== 图片配置系统 ====================
-        // 你可以将水果图片放在 image/ 文件夹下，然后在下面的数组中配置路径
-        // 支持的格式：PNG, JPG, JPEG, GIF, WebP, SVG
-        // 如果图片加载失败，会自动回退到彩色圆形 + emoji
+        // 推荐图片尺寸：樱桃64x64，西瓜256x256以上
+        // 支持的格式：PNG（推荐）, JPG, JPEG, WebP, SVG
         
         const fruitConfig = [
             { 
-                level: 1, 
-                name: '樱桃', 
-                radius: 16, 
-                mass: 1.0, 
-                score: 1, 
-                color: '#D42E2E', 
-                emoji: '🍒',
-                imagePath: 'image/cherry.png'  // 自定义图片路径
+                level: 1, name: '樱桃', radius: 16, mass: 1.0, score: 1, 
+                color: '#D42E2E', emoji: '🍒', imagePath: 'image/cherry.png' 
             },
             { 
-                level: 2, 
-                name: '草莓', 
-                radius: 20, 
-                mass: 1.5, 
-                score: 3, 
-                color: '#E84855', 
-                emoji: '🍓',
-                imagePath: 'image/strawberry.png'
+                level: 2, name: '草莓', radius: 20, mass: 1.5, score: 3, 
+                color: '#E84855', emoji: '🍓', imagePath: 'image/strawberry.png' 
             },
             { 
-                level: 3, 
-                name: '葡萄', 
-                radius: 24, 
-                mass: 2.2, 
-                score: 6, 
-                color: '#7B4B9A', 
-                emoji: '🍇',
-                imagePath: 'image/grape.png'
+                level: 3, name: '葡萄', radius: 24, mass: 2.2, score: 6, 
+                color: '#7B4B9A', emoji: '🍇', imagePath: 'image/grape.png' 
             },
             { 
-                level: 4, 
-                name: '橘子', 
-                radius: 28, 
-                mass: 3.0, 
-                score: 10, 
-                color: '#F79D4F', 
-                emoji: '🍊',
-                imagePath: 'image/orange.png'
+                level: 4, name: '橘子', radius: 28, mass: 3.0, score: 10, 
+                color: '#F79D4F', emoji: '🍊', imagePath: 'image/orange.png' 
             },
             { 
-                level: 5, 
-                name: '柿子', 
-                radius: 32, 
-                mass: 4.0, 
-                score: 15, 
-                color: '#F77F3A', 
-                emoji: '🍅',
-                imagePath: 'image/persimmon.png'
+                level: 5, name: '柿子', radius: 32, mass: 4.0, score: 15, 
+                color: '#F77F3A', emoji: '🍅', imagePath: 'image/persimmon.png' 
             },
             { 
-                level: 6, 
-                name: '苹果', 
-                radius: 37, 
-                mass: 5.5, 
-                score: 21, 
-                color: '#D43F3F', 
-                emoji: '🍎',
-                imagePath: 'image/apple.png'
+                level: 6, name: '苹果', radius: 37, mass: 5.5, score: 21, 
+                color: '#D43F3F', emoji: '🍎', imagePath: 'image/apple.png' 
             },
             { 
-                level: 7, 
-                name: '梨', 
-                radius: 43, 
-                mass: 7.5, 
-                score: 28, 
-                color: '#E8D16E', 
-                emoji: '🍐',
-                imagePath: 'image/pear.png'
+                level: 7, name: '梨', radius: 43, mass: 7.5, score: 28, 
+                color: '#E8D16E', emoji: '🍐', imagePath: 'image/pear.png' 
             },
             { 
-                level: 8, 
-                name: '桃子', 
-                radius: 49, 
-                mass: 10.0, 
-                score: 36, 
-                color: '#F9B9C2', 
-                emoji: '🍑',
-                imagePath: 'image/peach.png'
+                level: 8, name: '桃子', radius: 49, mass: 10.0, score: 36, 
+                color: '#F9B9C2', emoji: '🍑', imagePath: 'image/peach.png' 
             },
             { 
-                level: 9, 
-                name: '菠萝', 
-                radius: 56, 
-                mass: 14.0, 
-                score: 45, 
-                color: '#F0C45A', 
-                emoji: '🍍',
-                imagePath: 'image/pineapple.png'
+                level: 9, name: '菠萝', radius: 56, mass: 14.0, score: 45, 
+                color: '#F0C45A', emoji: '🍍', imagePath: 'image/pineapple.png' 
             },
             { 
-                level: 10, 
-                name: '哈密瓜', 
-                radius: 64, 
-                mass: 19.0, 
-                score: 55, 
-                color: '#C4E0A2', 
-                emoji: '🍈',
-                imagePath: 'image/melon.png'
+                level: 10, name: '哈密瓜', radius: 64, mass: 19.0, score: 55, 
+                color: '#C4E0A2', emoji: '🍈', imagePath: 'image/melon.png' 
             },
             { 
-                level: 11, 
-                name: '大西瓜', 
-                radius: 75, 
-                mass: 28.0, 
-                score: 66, 
-                color: '#2D6A4F', 
-                emoji: '🍉',
-                imagePath: 'image/watermelon.png'
+                level: 11, name: '大西瓜', radius: 75, mass: 28.0, score: 66, 
+                color: '#2D6A4F', emoji: '🍉', imagePath: 'image/watermelon.png' 
             }
         ];
 
@@ -367,13 +345,13 @@
             
             fruitConfig.forEach(config => {
                 const img = new Image();
-                img.crossOrigin = 'anonymous'; // 支持跨域
+                img.crossOrigin = 'anonymous';
                 
                 img.onload = () => {
                     fruitImages.set(config.level, img);
                     imagesLoaded++;
                     updateLoadStatus();
-                    console.log(`✅ 图片加载成功: ${config.imagePath}`);
+                    console.log(`✅ 图片加载成功: ${config.imagePath} (${img.naturalWidth}x${img.naturalHeight})`);
                 };
                 
                 img.onerror = () => {
@@ -388,33 +366,25 @@
             function updateLoadStatus() {
                 if (imagesLoaded === totalImages) {
                     const loadedCount = fruitImages.size;
-                    statusEl.textContent = `📷 图片加载完成: ${loadedCount}/${totalImages}`;
+                    statusEl.textContent = `📷 高清图片加载完成: ${loadedCount}/${totalImages}`;
                     setTimeout(() => {
                         statusEl.style.opacity = '0';
-                        setTimeout(() => statusEl.remove(), 500);
+                        setTimeout(() => statusEl.remove(), 2000);
                     }, 2000);
                 } else {
-                    statusEl.textContent = `📷 加载图片中: ${imagesLoaded}/${totalImages}`;
+                    statusEl.textContent = `📷 加载高清图片: ${imagesLoaded}/${totalImages}`;
                 }
             }
         }
         
-        // 获取水果配置
         function getFruitByLevel(level) {
             return fruitConfig.find(f => f.level === level) || fruitConfig[0];
         }
         
-        // 检查是否有图片
-        function hasImage(level) {
-            return fruitImages.has(level);
-        }
-        
-        // 获取图片
         function getImage(level) {
             return fruitImages.get(level);
         }
 
-        // 预加载图片
         preloadImages();
 
         // ==================== 游戏引擎 ====================
@@ -433,11 +403,6 @@
         engine.constraintIterations = 4;
 
         const world = engine.world;
-        
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const nextCanvas = document.getElementById('nextFruitCanvas');
-        const nextCtx = nextCanvas.getContext('2d');
         
         const scoreSpan = document.getElementById('scoreDisplay');
         const gameOverDiv = document.getElementById('gameOverlayText');
@@ -540,7 +505,7 @@
             nextCtx.beginPath();
             nextCtx.arc(40, 40, previewRadius, 0, 2*Math.PI);
             nextCtx.shadowColor = '#533e1e';
-            nextCtx.shadowBlur = 8;
+            nextCtx.shadowBlur = 8 * dpr;
             nextCtx.fillStyle = gradient;
             nextCtx.fill();
             nextCtx.shadowBlur = 0;
@@ -551,17 +516,17 @@
             // 绘制图片或emoji
             const img = getImage(nextFruitLevel);
             if (img && img.complete && img.naturalWidth > 0) {
-                // 使用图片
+                // 高质量图片渲染
                 nextCtx.save();
                 nextCtx.beginPath();
                 nextCtx.arc(40, 40, previewRadius - 2, 0, 2*Math.PI);
                 nextCtx.clip();
-                nextCtx.drawImage(img, 40 - previewRadius + 2, 40 - previewRadius + 2, 
-                                (previewRadius - 2) * 2, (previewRadius - 2) * 2);
+                // 使用更高质量的绘制
+                const imgSize = (previewRadius - 2) * 2;
+                nextCtx.drawImage(img, 40 - previewRadius + 2, 40 - previewRadius + 2, imgSize, imgSize);
                 nextCtx.restore();
             } else {
-                // 回退到emoji
-                nextCtx.font = 'bold 24px "Segoe UI Emoji", "Apple Color Emoji", system-ui';
+                nextCtx.font = `bold ${24 * dpr}px "Segoe UI Emoji", "Apple Color Emoji", system-ui`;
                 nextCtx.textAlign = 'center';
                 nextCtx.textBaseline = 'middle';
                 nextCtx.fillStyle = '#1f1a14';
@@ -701,7 +666,8 @@
         });
 
         function customRender() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 注意：由于已经 ctx.scale(dpr, dpr)，这里使用逻辑坐标绘制
+            ctx.clearRect(0, 0, LOGIC_WIDTH, LOGIC_HEIGHT);
             
             // 画警戒线
             ctx.beginPath();
@@ -724,19 +690,22 @@
                 const radius = data.radius;
                 const img = getImage(level);
                 
-                // 绘制圆形背景（图片或纯色）
+                // 绘制圆形背景
                 ctx.beginPath();
                 ctx.arc(pos.x, pos.y, radius, 0, 2*Math.PI);
                 
                 if (img && img.complete && img.naturalWidth > 0) {
-                    // 使用图片填充
+                    // 高清图片渲染
                     ctx.save();
                     ctx.shadowColor = '#2b1a0e';
                     ctx.shadowBlur = 12;
-                    ctx.fillStyle = data.color; // 备用颜色
+                    ctx.fillStyle = data.color;
                     ctx.fill();
                     ctx.clip();
-                    ctx.drawImage(img, pos.x - radius, pos.y - radius, radius * 2, radius * 2);
+                    
+                    // 计算绘制尺寸（使用图片原始比例，保持清晰）
+                    const imgSize = radius * 2;
+                    ctx.drawImage(img, pos.x - radius, pos.y - radius, imgSize, imgSize);
                     ctx.restore();
                 } else {
                     // 回退到渐变色
@@ -751,22 +720,20 @@
                     ctx.shadowColor = '#2b1a0e';
                     ctx.shadowBlur = 12;
                     ctx.fill();
+                    
+                    // 显示emoji
+                    ctx.shadowBlur = 0;
+                    ctx.font = `${Math.floor(radius*0.8)}px "Segoe UI Emoji", "Apple Color Emoji", system-ui`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#1a140e';
+                    ctx.fillText(data.emoji, pos.x, pos.y-1);
                 }
                 
                 ctx.shadowBlur = 0;
                 ctx.strokeStyle = '#4f321c';
                 ctx.lineWidth = 2.5;
                 ctx.stroke();
-                
-                // 如果没有图片，显示emoji
-                if (!img || !img.complete || img.naturalWidth === 0) {
-                    ctx.font = `${Math.floor(radius*0.8)}px "Segoe UI Emoji", "Apple Color Emoji", system-ui`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillStyle = '#1a140e';
-                    ctx.shadowBlur = 0;
-                    ctx.fillText(data.emoji, pos.x, pos.y-1);
-                }
                 
                 // 高光
                 ctx.beginPath();
@@ -821,8 +788,8 @@
                 ctx.beginPath();
                 ctx.arc(cloudX, 45, radius - 2, 0, 2*Math.PI);
                 ctx.clip();
-                ctx.drawImage(img, cloudX - radius + 2, 45 - radius + 2, 
-                            (radius - 2) * 2, (radius - 2) * 2);
+                const imgSize = (radius - 2) * 2;
+                ctx.drawImage(img, cloudX - radius + 2, 45 - radius + 2, imgSize, imgSize);
                 ctx.restore();
             } else {
                 ctx.font = `${Math.floor(radius*0.9)}px "Segoe UI Emoji"`;
@@ -892,7 +859,7 @@
 
         function getCanvasCoord(e) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
+            const scaleX = LOGIC_WIDTH / rect.width;
             
             let clientX;
             if (e.touches) {
@@ -902,7 +869,7 @@
             }
             
             const canvasX = (clientX - rect.left) * scaleX;
-            if (canvasX < 0 || canvasX > canvas.width) return null;
+            if (canvasX < 0 || canvasX > LOGIC_WIDTH) return null;
             return { x: canvasX };
         }
 
