@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>🍉 合成大西瓜 · 手机版</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #1d3b1a 0%, #2a5a24 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'PingFang SC', system-ui, -apple-system, sans-serif;
+            padding: 8px;
+            touch-action: pan-y; /* 允许上下滑动，但画布内禁止 */
+        }
+
+        .game-container {
+            background: #c9e4c5;
+            background-image: radial-gradient(circle at 30% 20%, #e2f3dc, #b6d7b0);
+            border-radius: 48px 48px 24px 24px;
+            box-shadow: 0 20px 0 #3a5e2f, 0 30px 30px rgba(0,0,0,0.3);
+            padding: 16px 16px 20px;
+            max-width: 420px;
+            width: 100%;
+            border: 4px solid #f7e3af;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4px 8px;
+        }
+
+        .score-box {
+            background: #2d1f0c;
+            padding: 6px 16px;
+            border-radius: 40px;
+            box-shadow: inset 0 -3px 0 #6b4e2a, 0 6px 0 #3b2b17;
+            color: #ffefc0;
+            font-weight: bold;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0 #4d3114;
+            border: 2px solid #efc47a;
+        }
+
+        .next-fruit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #efe0b2;
+            padding: 4px 14px 4px 12px;
+            border-radius: 40px;
+            box-shadow: inset 0 1px 5px #fff3d1, 0 5px 0 #a5834b;
+            border: 2px solid #fbeeb6;
+            pointer-events: none; /* 防止误触 */
+        }
+
+        .next-label {
+            color: #3d2b12;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        #nextFruitCanvas {
+            width: 36px;
+            height: 36px;
+            background: #fcf3db;
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 2px #ccb185, 0 3px 0 #7a623e;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            margin: 6px 0 4px;
+            border-radius: 32px 32px 24px 24px;
+            background: #e7cba5;
+            box-shadow: inset 0 0 0 6px #b4925a, inset 0 8px 12px rgba(0,0,0,0.2), 0 12px 0 #6b4f2c;
+            padding: 6px;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: #f9efdb;
+            border-radius: 24px 24px 18px 18px;
+            box-shadow: inset 0 0 0 3px #dbbd8c, inset 0 6px 8px rgba(50,30,10,0.1);
+            touch-action: none;  /* 禁止画布内滚动 */
+            cursor: grab;
+        }
+        
+        #gameCanvas:active {
+            cursor: grabbing;
+        }
+
+        .control-bar {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0 6px;
+        }
+
+        .restart-btn {
+            background: #fedb7b;
+            border: none;
+            border-bottom: 6px solid #b27a3a;
+            color: #3a2a12;
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 10px 30px;
+            border-radius: 50px;
+            box-shadow: 0 5px 0 #886633, 0 3px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.06s;
+            text-shadow: 1px 1px 0 #ffe2a3;
+            letter-spacing: 3px;
+            border: 2px solid #ffeda6;
+            touch-action: manipulation;
+            -webkit-appearance: none;
+        }
+
+        .restart-btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 2px 0 #6b4e2a, 0 3px 8px rgba(0,0,0,0.3);
+            border-bottom-width: 2px;
+        }
+
+        .hint {
+            color: #1e3d15;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-top: 4px;
+            text-shadow: 1px 1px 0 #dcedb9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .hint-icon {
+            font-size: 1.2rem;
+        }
+
+        .game-over-message {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 10, 2, 0.85);
+            backdrop-filter: blur(4px);
+            color: #ffd78a;
+            font-size: 2.2rem;
+            font-weight: 900;
+            padding: 12px 28px;
+            border-radius: 60px;
+            border: 3px solid #ffc857;
+            box-shadow: 0 8px 0 #3e2c0e, 0 0 30px #ffbb2b;
+            text-shadow: 4px 4px 0 #633d0e;
+            letter-spacing: 6px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 20;
+        }
+        
+        /* 手机横屏或小屏幕适配 */
+        @media (max-width: 400px) {
+            .game-container {
+                padding: 12px 12px 16px;
+            }
+            .score-box {
+                font-size: 1.2rem;
+                padding: 5px 12px;
+            }
+            .game-over-message {
+                font-size: 1.8rem;
+                padding: 10px 20px;
+                white-space: nowrap;
+            }
+        }
+        
+        /* 防止iOS缩放 */
+        input, button, textarea, select {
+            font-size: 16px;
+        }
+    </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+</head>
+<body>
+<div class="game-container">
+    <div class="header">
+        <div class="score-box">🍉 <span id="scoreDisplay">0000</span></div>
+        <div class="next-fruit">
+            <span class="next-label">下一个</span>
+            <canvas id="nextFruitCanvas" width="80" height="80"></canvas>
+        </div>
+    </div>
+
+    <div class="canvas-wrapper game-overlay">
+        <canvas id="gameCanvas" width="400" height="700"></canvas>
+        <div id="gameOverlayText" class="game-over-message" style="display: none;">游戏结束</div>
+    </div>
+
+    <div class="control-bar">
+        <button class="restart-btn" id="restartButton">🍍 再来一局</button>
+    </div>
+    <div class="hint">
+        <span class="hint-icon">👆</span> 按住画布左右滑动 · 松手掉落 <span class="hint-icon">🍎</span>
+    </div>
+</div>
+
+<script>
+    (function(){
+        "use strict";
+
+        // 检测是否为移动设备
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        const Engine = Matter.Engine;
+        const World = Matter.World;
+        const Bodies = Matter.Bodies;
+        const Body = Matter.Body;
+        const Events = Matter.Events;
+
+        const engine = Engine.create();
+        engine.gravity.y = 2.8;           
+        engine.velocityIterations = 10;
+        engine.positionIterations = 8;
+        engine.constraintIterations = 4;
+
+        const world = engine.world;
+        
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const nextCanvas = document.getElementById('nextFruitCanvas');
+        const nextCtx = nextCanvas.getContext('2d');
+        
+        const scoreSpan = document.getElementById('scoreDisplay');
+        const gameOverDiv = document.getElementById('gameOverlayText');
+
+        let fruits = [];
+        let fruitLevelMap = new Map();
+        let nextFruitLevel = 1;
+        let currentScore = 0;
+        let gameOver = false;
+        let spawnLock = false;
+        
+        const deadZoneTopY = 100;
+        let stuckTimers = new Map();
+
+        let cloudX = 200;
+        
+        function getCurrentBoundary() {
+            const data = getFruitByLevel(nextFruitLevel);
+            const radius = data.radius;
+            const minBoundary = 20 + radius + 5;
+            const maxBoundary = 380 - radius - 5;
+            return { min: minBoundary, max: maxBoundary };
+        }
+
+        let isDragging = false;
+
+        const fruitData = [
+            { level:1, name:'樱桃', radius:16, mass:1.0, score:1,  color:'#D42E2E', emoji:'🍒' },
+            { level:2, name:'草莓', radius:20, mass:1.5, score:3,  color:'#E84855', emoji:'🍓' },
+            { level:3, name:'葡萄', radius:24, mass:2.2, score:6,  color:'#7B4B9A', emoji:'🍇' },
+            { level:4, name:'橘子', radius:28, mass:3.0, score:10, color:'#F79D4F', emoji:'🍊' },
+            { level:5, name:'柿子', radius:32, mass:4.0, score:15, color:'#F77F3A', emoji:'🍅' },
+            { level:6, name:'苹果', radius:37, mass:5.5, score:21, color:'#D43F3F', emoji:'🍎' },
+            { level:7, name:'梨',   radius:43, mass:7.5, score:28, color:'#E8D16E', emoji:'🍐' },
+            { level:8, name:'桃子', radius:49, mass:10.0,score:36, color:'#F9B9C2', emoji:'🍑' },
+            { level:9, name:'菠萝', radius:56, mass:14.0,score:45, color:'#F0C45A', emoji:'🍍' },
+            { level:10,name:'哈密瓜',radius:64, mass:19.0,score:55,color:'#C4E0A2', emoji:'🍈' },
+            { level:11,name:'大西瓜',radius:75, mass:28.0,score:66,color:'#2D6A4F', emoji:'🍉' }
+        ];
+
+        function getFruitByLevel(level) {
+            return fruitData.find(f => f.level === level) || fruitData[0];
+        }
+
+        function buildWalls() {
+            const wallOptions = { 
+                isStatic: true, 
+                restitution: 0.25, 
+                friction: 0.5,
+                render: { visible: false } 
+            };
+            
+            const leftWall = Bodies.rectangle(20, 350, 20, 700, wallOptions);
+            const rightWall = Bodies.rectangle(380, 350, 20, 700, wallOptions);
+            const ground = Bodies.rectangle(200, 710, 400, 40, wallOptions);
+            
+            World.add(world, [leftWall, rightWall, ground]);
+        }
+
+        function spawnFruit(level, spawnX = null) {
+            if (gameOver) return null;
+            
+            const data = getFruitByLevel(level);
+            
+            const boundary = getCurrentBoundary();
+            let x = (spawnX !== null) ? spawnX : cloudX;
+            x = Math.min(boundary.max, Math.max(boundary.min, x));
+            
+            const y = 50;
+            
+            const body = Bodies.circle(x, y, data.radius, {
+                mass: data.mass,
+                restitution: 0.28,
+                friction: 0.45,
+                frictionAir: 0.012,
+                frictionStatic: 0.5,
+                density: 0.001,
+                label: 'fruit',
+                collisionFilter: { group: 0, category: 0x0002, mask: 0xFFFFFFFF },
+                render: { fillStyle: data.color, strokeStyle: '#3d2a1a', lineWidth: 2 }
+            });
+            
+            body.level = level;
+            body.fruitName = data.name;
+            body.isMerging = false;
+            
+            fruitLevelMap.set(body.id, level);
+            
+            World.add(world, body);
+            fruits.push(body);
+            
+            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.03);
+            
+            return body;
+        }
+
+        function generateNextFruit() {
+            nextFruitLevel = Math.floor(Math.random() * 5) + 1;
+            drawNextFruitPreview();
+            
+            const boundary = getCurrentBoundary();
+            cloudX = Math.min(boundary.max, Math.max(boundary.min, cloudX));
+        }
+
+        function drawNextFruitPreview() {
+            nextCtx.clearRect(0, 0, 80, 80);
+            const data = getFruitByLevel(nextFruitLevel);
+            
+            const previewRadius = Math.min(30, data.radius * 0.8);
+            
+            const gradient = nextCtx.createRadialGradient(
+                32, 32, previewRadius*0.2,
+                45, 45, previewRadius*1.2
+            );
+            gradient.addColorStop(0, data.color);
+            gradient.addColorStop(1, shadeColor(data.color, -20));
+            
+            nextCtx.beginPath();
+            nextCtx.arc(40, 40, previewRadius, 0, 2*Math.PI);
+            nextCtx.shadowColor = '#533e1e';
+            nextCtx.shadowBlur = 8;
+            nextCtx.fillStyle = gradient;
+            nextCtx.fill();
+            nextCtx.shadowBlur = 0;
+            nextCtx.strokeStyle = '#4a301a';
+            nextCtx.lineWidth = 3;
+            nextCtx.stroke();
+            
+            nextCtx.beginPath();
+            nextCtx.arc(30, 30, 5, 0, 2*Math.PI);
+            nextCtx.fillStyle = '#FFF9E6';
+            nextCtx.globalAlpha = 0.5;
+            nextCtx.fill();
+            nextCtx.globalAlpha = 1.0;
+            
+            nextCtx.font = 'bold 24px "Segoe UI Emoji", "Apple Color Emoji", system-ui';
+            nextCtx.textAlign = 'center';
+            nextCtx.textBaseline = 'middle';
+            nextCtx.fillStyle = '#1f1a14';
+            nextCtx.fillText(data.emoji, 40, 42);
+        }
+
+        function updateScoreUI() {
+            let str = String(currentScore).padStart(4, '0').slice(0,4);
+            scoreSpan.textContent = str;
+        }
+
+        function mergeFruits(bodyA, bodyB) {
+            if (bodyA.isMerging || bodyB.isMerging) return false;
+            if (!fruitLevelMap.has(bodyA.id) || !fruitLevelMap.has(bodyB.id)) return false;
+            
+            const levelA = fruitLevelMap.get(bodyA.id);
+            const levelB = fruitLevelMap.get(bodyB.id);
+            if (levelA !== levelB) return false;
+            if (levelA >= 11) return false;
+            
+            const newLevel = levelA + 1;
+            
+            bodyA.isMerging = true;
+            bodyB.isMerging = true;
+            
+            const midX = (bodyA.position.x + bodyB.position.x) / 2;
+            const midY = (bodyA.position.y + bodyB.position.y) / 2;
+            
+            World.remove(world, [bodyA, bodyB]);
+            fruits = fruits.filter(f => f.id !== bodyA.id && f.id !== bodyB.id);
+            fruitLevelMap.delete(bodyA.id);
+            fruitLevelMap.delete(bodyB.id);
+            
+            const newData = getFruitByLevel(newLevel);
+            const newBody = Bodies.circle(midX, midY, newData.radius, {
+                mass: newData.mass,
+                restitution: 0.3,
+                friction: 0.45,
+                frictionAir: 0.012,
+                label: 'fruit',
+                render: { fillStyle: newData.color, strokeStyle: '#2e1e10', lineWidth: 2.5 }
+            });
+            newBody.level = newLevel;
+            newBody.isMerging = false;
+            fruitLevelMap.set(newBody.id, newLevel);
+            
+            World.add(world, newBody);
+            fruits.push(newBody);
+            
+            currentScore += newData.score;
+            updateScoreUI();
+            
+            const explosionCenter = { x: midX, y: midY };
+            const forceMagnitude = 0.025 * newLevel + 0.06;
+            const radius = 130;
+            
+            fruits.forEach(fruit => {
+                if (fruit.id === newBody.id) return;
+                const dx = fruit.position.x - explosionCenter.x;
+                const dy = fruit.position.y - explosionCenter.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < radius && dist > 5) {
+                    const strength = (1 - dist/radius) * forceMagnitude * fruit.mass;
+                    const angle = Math.atan2(dy, dx);
+                    Body.applyForce(fruit, fruit.position, {
+                        x: Math.cos(angle) * strength,
+                        y: Math.sin(angle) * strength
+                    });
+                }
+            });
+            
+            // 移动端触觉反馈（如果支持）
+            if (isMobile && navigator.vibrate) {
+                navigator.vibrate(10);
+            }
+            
+            return true;
+        }
+
+        Events.on(engine, 'collisionStart', function(event) {
+            if (gameOver) return;
+            
+            const pairs = event.pairs;
+            for (let i = 0; i < pairs.length; i++) {
+                const pair = pairs[i];
+                const { bodyA, bodyB } = pair;
+                
+                if (bodyA.label === 'fruit' && bodyB.label === 'fruit') {
+                    if (bodyA.id > bodyB.id) continue;
+                    mergeFruits(bodyA, bodyB);
+                }
+            }
+        });
+
+        Events.on(engine, 'beforeUpdate', function() {
+            if (gameOver) return;
+            
+            const now = performance.now();
+            const STUCK_TIME = 1800;
+            
+            for (let fruit of fruits) {
+                if (fruit.position.y < deadZoneTopY && !fruit.isStatic) {
+                    const vel = fruit.velocity;
+                    const speed = Math.sqrt(vel.x*vel.x + vel.y*vel.y);
+                    
+                    if (speed < 0.15) {
+                        if (!stuckTimers.has(fruit.id)) {
+                            stuckTimers.set(fruit.id, now);
+                        } else {
+                            const start = stuckTimers.get(fruit.id);
+                            if (now - start > STUCK_TIME) {
+                                if (!gameOver) {
+                                    gameOver = true;
+                                    gameOverDiv.style.display = 'block';
+                                    if (isMobile && navigator.vibrate) {
+                                        navigator.vibrate([100, 50, 100]);
+                                    }
+                                }
+                                return;
+                            }
+                        }
+                    } else {
+                        stuckTimers.delete(fruit.id);
+                    }
+                } else {
+                    stuckTimers.delete(fruit.id);
+                }
+            }
+        });
+
+        function customRender() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.beginPath();
+            ctx.setLineDash([8, 12]);
+            ctx.moveTo(20, deadZoneTopY);
+            ctx.lineTo(380, deadZoneTopY);
+            ctx.strokeStyle = '#d63e3e';
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#ff6666';
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.shadowBlur = 0;
+            
+            fruits.forEach(fruit => {
+                const level = fruitLevelMap.get(fruit.id) || 1;
+                const data = getFruitByLevel(level);
+                const pos = fruit.position;
+                const radius = data.radius;
+                
+                const vel = fruit.velocity;
+                const speed = Math.sqrt(vel.x*vel.x + vel.y*vel.y);
+                const isSqueeze = speed > 1.8;
+                
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, radius, 0, 2*Math.PI);
+                
+                const gradient = ctx.createRadialGradient(
+                    pos.x-8, pos.y-8, radius*0.2,
+                    pos.x+5, pos.y+5, radius*1.2
+                );
+                gradient.addColorStop(0, data.color);
+                gradient.addColorStop(1, shadeColor(data.color, -20));
+                ctx.fillStyle = gradient;
+                
+                ctx.shadowColor = '#2b1a0e';
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#4f321c';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(pos.x-6, pos.y-6, radius*0.22, 0, 2*Math.PI);
+                ctx.fillStyle = '#FFFDE7';
+                ctx.globalAlpha = 0.4;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+                
+                ctx.font = `${Math.floor(radius*0.8)}px "Segoe UI Emoji", "Apple Color Emoji", system-ui`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                let emoji = data.emoji;
+                if (isSqueeze) {
+                    if (level < 6) emoji = '😖';
+                    else if (level < 9) emoji = '😫';
+                    else emoji = '🤯';
+                }
+                ctx.fillStyle = '#1a140e';
+                ctx.shadowBlur = 0;
+                ctx.fillText(emoji, pos.x, pos.y-1);
+                
+                ctx.font = 'bold 12px "Segoe UI"';
+                ctx.fillStyle = '#2f1f0c';
+                ctx.fillText(data.name, pos.x, pos.y - radius - 6);
+            });
+            
+            drawCloudIndicator();
+        }
+
+        function shadeColor(col, percent) {
+            let R = parseInt(col.substring(1,3),16);
+            let G = parseInt(col.substring(3,5),16);
+            let B = parseInt(col.substring(5,7),16);
+            R = Math.min(255, Math.max(0, R + percent));
+            G = Math.min(255, Math.max(0, G + percent));
+            B = Math.min(255, Math.max(0, B + percent));
+            return `#${((1 << 24) + (R << 16) + (G << 8) + B).toString(16).slice(1)}`;
+        }
+
+        function drawCloudIndicator() {
+            const data = getFruitByLevel(nextFruitLevel);
+            const radius = data.radius;
+            
+            const gradient = ctx.createRadialGradient(
+                cloudX-8, 37, radius*0.2,
+                cloudX+5, 50, radius*1.2
+            );
+            gradient.addColorStop(0, data.color);
+            gradient.addColorStop(1, shadeColor(data.color, -20));
+            
+            ctx.beginPath();
+            ctx.arc(cloudX, 45, radius, 0, 2*Math.PI);
+            ctx.fillStyle = gradient;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#2b1a0e';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#4f321c';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(cloudX-6, 39, radius*0.22, 0, 2*Math.PI);
+            ctx.fillStyle = '#FFFDE7';
+            ctx.globalAlpha = 0.4;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+            
+            ctx.font = `${Math.floor(radius*0.9)}px "Segoe UI Emoji"`;
+            ctx.fillStyle = '#1a140e';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(data.emoji, cloudX, 46);
+            
+            ctx.beginPath();
+            ctx.moveTo(cloudX - 8, 45 + radius + 8);
+            ctx.lineTo(cloudX, 45 + radius + 18);
+            ctx.lineTo(cloudX + 8, 45 + radius + 8);
+            ctx.fillStyle = '#8b6b42';
+            ctx.fill();
+        }
+
+        function renderLoop() {
+            customRender();
+            requestAnimationFrame(renderLoop);
+        }
+
+        function handleStart(e) {
+            e.preventDefault();
+            const coord = getCanvasCoord(e);
+            if (coord) {
+                const boundary = getCurrentBoundary();
+                cloudX = Math.min(boundary.max, Math.max(boundary.min, coord.x));
+                isDragging = true;
+            }
+        }
+
+        function handleMove(e) {
+            e.preventDefault();
+            if (!isDragging) return;
+            const coord = getCanvasCoord(e);
+            if (coord) {
+                const boundary = getCurrentBoundary();
+                cloudX = Math.min(boundary.max, Math.max(boundary.min, coord.x));
+            }
+        }
+
+        function handleEnd(e) {
+            e.preventDefault();
+            if (isDragging && !gameOver && !spawnLock) {
+                spawnLock = true;
+                spawnFruit(nextFruitLevel, cloudX);
+                generateNextFruit();
+                setTimeout(() => { spawnLock = false; }, 250);
+            }
+            isDragging = false;
+        }
+
+        function getCanvasCoord(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            
+            let clientX;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+            } else {
+                clientX = e.clientX;
+            }
+            
+            const canvasX = (clientX - rect.left) * scaleX;
+            if (canvasX < 0 || canvasX > canvas.width) return null;
+            return { x: canvasX };
+        }
+
+        function resetGame() {
+            gameOver = false;
+            gameOverDiv.style.display = 'none';
+            currentScore = 0;
+            updateScoreUI();
+            stuckTimers.clear();
+            
+            World.clear(world, false);
+            fruits = [];
+            fruitLevelMap.clear();
+            
+            buildWalls();
+            
+            spawnFruit(1, 150);
+            setTimeout(() => spawnFruit(2, 250), 100);
+            setTimeout(() => spawnFruit(1, 200), 300);
+            
+            generateNextFruit();
+            cloudX = 200;
+        }
+
+        function bindEvents() {
+            canvas.addEventListener('touchstart', handleStart, { passive: false });
+            canvas.addEventListener('touchmove', handleMove, { passive: false });
+            canvas.addEventListener('touchend', handleEnd);
+            canvas.addEventListener('touchcancel', handleEnd);
+            canvas.addEventListener('mousedown', handleStart);
+            window.addEventListener('mousemove', (e) => { if (isDragging) handleMove(e); });
+            window.addEventListener('mouseup', handleEnd);
+            
+            document.getElementById('restartButton').addEventListener('click', resetGame);
+            document.getElementById('restartButton').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        }
+
+        function init() {
+            buildWalls();
+            resetGame();
+            bindEvents();
+            
+            const runner = Matter.Runner.create();
+            Matter.Runner.run(runner, engine);
+            
+            renderLoop();
+        }
+
+        init();
+    })();
+</script>
+</body>
+</html>
